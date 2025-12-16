@@ -28,33 +28,35 @@ user authentication, quiz handling, analytics, and self-repairing file integrity
 ---
 
 ## 📂 Project Structure
+
+```text
 LMS-in-C/
 │
-├── quiz_sys.c # Main source file
+├── quiz_sys.c                # Main source file
 │
-├── credentials/ # User & admin credentials
-│ ├── admin.txt
-│ └── user.txt
+├── credentials/              # User & admin credentials
+│   ├── admin.txt
+│   └── user.txt
 │
-├── quizzes/ # Subject-wise quizzes
-│ ├── physics/
-│ ├── maths/
-│ ├── c_prog/
-│ ├── linux/
-│ └── prob_solving/
+├── quizzes/                  # Subject-wise quizzes
+│   ├── physics/
+│   ├── maths/
+│   ├── c_prog/
+│   ├── linux/
+│   └── prob_solving/
 │
-├── analytics/ # Performance analytics
-│ └── subject-wise records
+├── analytics/                # Performance analytics
+│   └── subject-wise records
 │
-├── responses/ # Student quiz responses
-│ └── student responses
+├── responses/                # Student quiz responses
+│   └── student responses
 │
-├── index/ # System indexing & counters
-│ ├── index.txt
-│ └── user_count.txt
+├── index/                    # System indexing & counters
+│   ├── index.txt
+│   └── user_count.txt
 │
-└── build.txt # First-run & version tracking
-
+└── build.txt                 # First-run & version tracking
+```
 
 ---
 

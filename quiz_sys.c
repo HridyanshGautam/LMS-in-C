@@ -7,6 +7,7 @@
 #include <string.h>
 #include <conio.h>
 #include <stdlib.h>
+
 float version = 1.00;
 struct quiz_index {
     int physics,maths,c_prog,linux,prob,global_tmp;
@@ -42,6 +43,7 @@ int database(char identity, struct quiz_details *qd);
 
 int admin_check();
 void admin_mode();
+void delete_quizz(int activate, char *filepath);
 int make_quiz();
 int mcq_make();
 
@@ -771,7 +773,7 @@ void menu_fix_logic(int *menu_select, int *row_trk, int *sanity, int bottom_limi
                     gotoXY(*row_trk,horizontal_correction);
                     printf("  ");
                     (*row_trk)--;
-                    printf("%d", *row_trk);
+                    //printf("%d", *row_trk);
                     gotoXY(*row_trk, horizontal_correction);
                     printf("->");
                 }
@@ -1526,15 +1528,42 @@ int database(char identity, struct quiz_details *qd){
             system("cls");
         break;
         }
-        case 'A':
-            printf("Which quizz would you like to modify?\n->");
-            scanf("%d",&quizz_selection);
-            if(quizz_selection == 0){
-                system("cls");
-                return 1;
-            }
-            sprintf(quizz_filename,"quizzes/%s/%s_quizz_%d.txt",quizz_details.subject,quizz_details.subject,quizz_selection);
+        case 'd':
+            i = 1;
+            system("cls");     
+            int row = 2, row_trk = 2, sanity = 0;
+            char tmp_qz[100], qz_name_tmp[100];
+            hide_cursor();
+            red();
+            printf("\033[1;1HPlease select quizz for the subject %s", qd->subject);
+            print_arrow(2, 1);
+            reset();
+            while(sanity != 1){
+                i = 1; row = 2;
+                while(i <= indexx){
+                    sprintf(tmp_name, "quizzes/%s/%s_quizz_%d.txt", qd->subject, qd->subject, i);
+                    //printf("\033[6;10H%s", tmp_name);
+                    FILE *quizz = fopen(tmp_name, "r");
+                    if(quizz == NULL){
+                        break;
+                    }
+                    fgets(qz_name_tmp, sizeof(qz_name_tmp),quizz);
+                    qz_name_tmp[strcspn(qz_name_tmp,"\n")] = '\0';
+                    
+                    sprintf(tmp_qz, "%d)%s",i, qz_name_tmp);
+                    print_menu_row(tmp_qz, row, 3, row_trk == row, "blue");
+                    i++; row++;
+                    fclose(quizz);
+                }
+                sprintf(tmp_name, "%d)EXIT", i);
+                print_menu_row(tmp_name, row, 3, row_trk == row, "red");
+                menu_fix_logic(&quizz_selection, &row_trk, &sanity, (indexx + 2), 2, 1);
+            }show_cursor();
+
+            
+        
         break;
+        
         case 'a':
             printf("Which quizz would you like to view?\n->");
             scanf("%d",&quizz_selection);
@@ -1634,12 +1663,12 @@ while(1){
         reset();
         system("cls");
         int quiz_choice;
-        printf("Please select funtion:\n0)Main menu\n1)Make quiz\n2)Edit existing quizes\n->");
+        printf("Please select funtion:\n0)Main menu\n1)Make quiz\n2)Delete quizz\n->");
         quiz_choice = safe_num_extract(3);
         if (quiz_choice == 1){
             make_quiz();
         }else if(quiz_choice == 2){
-            //edit_quiz();
+            delete_quizz(0, NULL);
         }else if(quiz_choice == 0){
             system("cls");
             continue;
@@ -1720,6 +1749,13 @@ int make_quiz(){
         //FITB();
         WIP();
     }
+}
+void delete_quizz(int activate, char *filepath){
+    fetch_index();
+    system("cls");
+    stu_subject_panel('d');
+
+
 }
 int mcq_make(){
     

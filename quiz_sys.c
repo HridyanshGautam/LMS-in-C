@@ -109,17 +109,20 @@ void WIP(){
 
 
 //int FITB();
-
+int run = 0;
 int main(){
     //int menu_select; NOT SAFE debug only
     hide_cursor();
     int menu_select;
-    SetConsoleOutputCP(CP_UTF8);
-    SetConsoleCP(CP_UTF8);
+    if(!run){
+        SetConsoleOutputCP(CP_UTF8);
+        SetConsoleCP(CP_UTF8);
+        system("cls");
+        verify_integrity();
+        system("cls");
+        run = 1;
+    }
     system("cls");
-    verify_integrity();
-    system("cls");
-    
     while(1){
         hide_cursor();
         int sanity = 0, row_trk;
@@ -188,7 +191,7 @@ int main(){
             printf("\nExiting");
             pretty_little_loading_bar();
             reset();
-        return 0;
+        exit(0);
         }
     }
 }
@@ -801,6 +804,7 @@ int numeric_check(const char *in){
     }
     return 1;
 }
+
 //Student portal funtioins
 int student_validity(){
     system("cls");
@@ -1559,7 +1563,12 @@ int database(char identity, struct quiz_details *qd){
                 print_menu_row(tmp_name, row, 3, row_trk == row, "red");
                 menu_fix_logic(&quizz_selection, &row_trk, &sanity, (indexx + 2), 2, 1);
             }show_cursor();
-
+                if(quizz_selection != i){
+                    sprintf(tmp_name, "quizzes/%s/%s_quizz_%d.txt", qd->subject, qd->subject, quizz_selection);
+                    delete_quizz(quizz_selection, tmp_name);
+                }else if(quizz_selection == (i-1)){
+                    delete_quizz(0, NULL);
+                }
             
         
         break;
@@ -1685,7 +1694,7 @@ while(1){
         printf("\nLogging out");
         pretty_little_loading_bar();
         reset();
-        return;
+        main();
     }
 }
 }
@@ -1751,11 +1760,70 @@ int make_quiz(){
     }
 }
 void delete_quizz(int activate, char *filepath){
-    fetch_index();
+    char file_name[100], tmp_title[100], subject[20];
+    int choice, row_trk = 2, sanity = 0, i = 8, sub_index = 0;
+    if(activate == 0){
+        fetch_index();
+        system("cls");
+        stu_subject_panel('d');
+        admin_mode();
+    }
+    //Subject extraction from filepath as I forgot to add subject as func parameeter and i dont wanna do that now
+    while(filepath[i] != '/'){
+        subject[sub_index] = filepath[i];
+        i++; sub_index++;
+    }subject[sub_index] = '\0';
+
+    FILE *quizz_title = fopen(filepath, "r");
+    fgets(tmp_title, sizeof(tmp_title), quizz_title);
+    tmp_title[strspn(tmp_title, "\n")] = '\0';
     system("cls");
-    stu_subject_panel('d');
+    fclose(quizz_title);
+    hide_cursor();
+    red();
+    printf("\n\033[1;1HAre you sure you want to delete '%s'?", tmp_title);
+    print_arrow(2,1);
+    reset();
+    while(sanity != 1){
 
+        print_menu_row("YES", 2, 3, row_trk == 2, "green");
+        print_menu_row("NO", 3, 3, row_trk == 3, "yellow");
 
+        menu_fix_logic(&choice, &row_trk, &sanity, 3, 2, 1);
+    }show_cursor();
+    if(choice == 2){
+        admin_mode();
+    }
+    remove(filepath);
+    activate++;
+    while(1){
+        sprintf(filepath, "quizzes/%s/%s_quizz_%d.txt", subject, subject, activate);
+        FILE *qz_REindex = fopen(filepath, "r");
+        if(qz_REindex == NULL){
+            break;
+        }
+        fclose(qz_REindex);
+        sprintf(tmp_title, "quizzes/%s/%s_quizz_%d.txt", subject, subject, (activate - 1));
+        rename(filepath, tmp_title);
+        activate++;
+    }
+    fetch_index();
+    remove("index/index.txt");
+    FILE *index = fopen("index/index.txt", "w");
+    if(strcmp(subject,"physics") == 0){
+        fprintf(index, "%d %d %d %d %d", (ndx.physics-1), ndx.maths, ndx.c_prog, ndx.linux, ndx.prob);
+    }else if(strcmp(subject,"maths") == 0){
+        fprintf(index, "%d %d %d %d %d", ndx.physics, (ndx.maths-1), ndx.c_prog, ndx.linux, ndx.prob);
+    }else if(strcmp(subject,"c_prog") == 0){
+        fprintf(index, "%d %d %d %d %d", ndx.physics, ndx.maths, (ndx.c_prog-1), ndx.linux, ndx.prob);
+    }else if(strcmp(subject,"linux") == 0){
+        fprintf(index, "%d %d %d %d %d", ndx.physics, ndx.maths, ndx.c_prog, (ndx.linux-1), ndx.prob);
+    }else if(strcmp(subject,"prob_solving") == 0){
+        fprintf(index, "%d %d %d %d %d", ndx.physics, ndx.maths, ndx.c_prog, ndx.linux, (ndx.prob-1));
+    }
+    fclose(index);
+    printf("\033[4;1HQuizz deleted succesfully\n");
+    press_enter();
 }
 int mcq_make(){
     

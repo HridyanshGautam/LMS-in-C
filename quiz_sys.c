@@ -1,6 +1,6 @@
 // This project exists to learn C deeply
 // It is intentionally overbuilt, non-portable, and has some "human" touches also if i had more time i would have added MD5 hashing for passwords and answer files
-// dont use scanf for input handling, modularity is key, C is unforgiving, NEVER USE GLOBALS
+// dont use scanf for input handling, modularity is key, C is unforgiving, NEVER USE GLOBALS new me thought i am a genius if only she knew the debugging nightmare
 #include <stdio.h>
 #include <windows.h>
 #include <math.h>
@@ -811,7 +811,7 @@ int student_validity(){
     FILE *credentiaals = fopen("credentials/user.txt","r");
     if (credentiaals == NULL){
         yellow();
-        printf("\nERROR! Critical credential file failed to initialise\n");
+        printf("\nERROR! Critical credential file failed to initialise\n"); //sounds so serious :O
         printf("Not safe to continue\n");
         reset();
         press_enter();
@@ -843,12 +843,12 @@ int student_validity(){
         green();
         printf("\nNice try Didddy");
         Sleep(5000); //Take this time to think of your life choices you pesky exploiter
-        system("cls");
+        system("cls"); // For dramatic effect
         red();
-        printf("Exiting");
-        pretty_little_loading_bar();
+        printf("Exiting"); 
+        scary_little_loading_bar(10, 1000, '.'); // Slowly watch it exit
         reset();
-        exit(0);//goodbye
+        exit(0);//goodbye :)
     }
     printf("\n");
     FILE *credentials = fopen("credentials/user.txt", "r");
@@ -1114,7 +1114,7 @@ int evaluator(){
     line[strcspn(line,"\n")] = '\0';
     sscanf(line, "%s", kudda);
     fgets(line,sizeof(line), responses);
-    line[strcspn(line,"\n")] = '\0';
+    line[strcspn(line,"\n")] = '\0'; //if i get ONE more input buffer fgets skip
     sscanf(line,"%s", quizz_details.quizz_name);
     while(i <= quizz_details.number_of_questions){
         fgets(line, sizeof(line), responses);
@@ -1453,11 +1453,11 @@ int database(char identity, struct quiz_details *qd){
                     }
                     
                     printf("Analytics Menu\n0)Back\n1)View response sheet\n2)List of correct questions\n3)List of incorrect question\n->");
-                    //while(getchar() != '\n'); i hate this language
+                    //while(getchar() != '\n'); //i hate this language
                     details_selection = safe_num_extract(3);
                     
                     if(details_selection == 0){
-                        //Gonna do via recursions
+                        //Gonna do via recursions or forget about it
                         WIP();
                     }else if(details_selection == 1){
                         //SKIPPING THE MARKS LINE FROM QUIZZ FILE for now                                                                                                                       EXTRASS
@@ -1489,7 +1489,7 @@ int database(char identity, struct quiz_details *qd){
                             fgets(response_option_BUFFER, sizeof(response_option_BUFFER), response);
                             response_option_BUFFER[strcspn(response_option_BUFFER,"\n")] = '\0';
                             sscanf(response_option_BUFFER,"Question_%d:%c", &garbage1, &analytics_tmp.response);
-                            
+                            //i have no ideaa how this monstrocity works but it works
                             //Printing everything
                             printf("%s\n%s\n%s\n%s\n%s\nCorrect Option: %c\n", analytics_tmp.question_tmp, analytics_tmp.tmp_optA, analytics_tmp.tmp_optB, analytics_tmp.tmp_optC, analytics_tmp.tmp_optD, analytics_tmp.correct_option);
                             //Printing color coded options
@@ -1760,8 +1760,8 @@ int make_quiz(){
     }
 }
 void delete_quizz(int activate, char *filepath){
-    char file_name[100], tmp_title[100], subject[20];
-    int choice, row_trk = 2, sanity = 0, i = 8, sub_index = 0;
+    char file_name[100], tmp_title[100], subject[20], qz_tittle[100], response_folder[100], response_folder_path_buffer[100], command[100];
+    int choice, row_trk = 2, sanity = 0, i = 8, sub_index = 0, ans_ndx = activate;
     if(activate == 0){
         fetch_index();
         system("cls");
@@ -1775,8 +1775,7 @@ void delete_quizz(int activate, char *filepath){
     }subject[sub_index] = '\0';
 
     FILE *quizz_title = fopen(filepath, "r");
-    fgets(tmp_title, sizeof(tmp_title), quizz_title);
-    tmp_title[strspn(tmp_title, "\n")] = '\0';
+    fscanf(quizz_title, "%s", tmp_title);
     system("cls");
     fclose(quizz_title);
     hide_cursor();
@@ -1794,7 +1793,14 @@ void delete_quizz(int activate, char *filepath){
     if(choice == 2){
         admin_mode();
     }
-    remove(filepath);
+    remove(filepath); //Remove quizz file
+    replace_space(tmp_title, qz_tittle); // Building answer file path to delete
+    
+    sprintf(command, "rmdir /s /q \"responses\\%s\\B7\\%s\"", subject, qz_tittle);
+    system(command);
+    sprintf(filepath, "quizzes/%s/answers/%s_%d.txt", subject, qz_tittle, ans_ndx);
+    remove(filepath); //Remove answer file
+    
     activate++;
     while(1){
         sprintf(filepath, "quizzes/%s/%s_quizz_%d.txt", subject, subject, activate);
@@ -1802,11 +1808,24 @@ void delete_quizz(int activate, char *filepath){
         if(qz_REindex == NULL){
             break;
         }
+        
+        fscanf(qz_REindex, "%s", tmp_title);
         fclose(qz_REindex);
+        replace_space(tmp_title, qz_tittle);
+        
         sprintf(tmp_title, "quizzes/%s/%s_quizz_%d.txt", subject, subject, (activate - 1));
         rename(filepath, tmp_title);
+        sprintf(filepath, "quizzes/%s/answers/%s_%d.txt", subject, qz_tittle, activate);
+        sprintf(tmp_title, "quizzes/%s/answers/%s_%d.txt", subject, qz_tittle, (activate-1));
+        rename(filepath, tmp_title);
+    
         activate++;
+    
     }
+    
+    
+    
+    
     fetch_index();
     remove("index/index.txt");
     FILE *index = fopen("index/index.txt", "w");
@@ -1883,7 +1902,7 @@ int mcq_make(){
         tmp_optD[strcspn(tmp_optD, "\n")] = '\0';
         printf("Correct option(lower case): ");
         correct_option = safe_option_extract();
-        //while(getchar() != '\n');
+        //while(getchar() != '\n'); //god i hate these input buffers
         fprintf(MCQ, "Question %d:%s\nA:%s\nB:%s\nC:%s\nD:%s\n", i,tmp_question,tmp_optA,tmp_optB,tmp_optC,tmp_optD);
         fprintf(answers,"Question_%d:%c\n",i,correct_option);
         i++;

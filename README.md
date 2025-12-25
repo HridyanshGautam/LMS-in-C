@@ -12,14 +12,14 @@ user authentication, quiz handling, analytics, and self-repairing file integrity
 - **Will not compile on Linux/macOS** without major refactoring
 - Includes **self-repair mechanisms** to restore missing or tampered files/folders
 - Recovery logic may recreate critical files (index, credentials) to prevent crashes
-```text
-- Defualt **User Login**
-    Username: gautam
-    Password: 123
--Default **Admin Login**
-    **Username**: admin
-    **Password**: admin123
-```
+
+- Defualt **User** Login
+-   **Username**: gautam
+-   **Password**: 123
+- Default **Admin** Login
+-   **Username**: admin
+-   **Password**: admin123
+
 ---
 
 ## ✨ Features

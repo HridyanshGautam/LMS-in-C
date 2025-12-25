@@ -13,12 +13,12 @@ user authentication, quiz handling, analytics, and self-repairing file integrity
 - Includes **self-repair mechanisms** to restore missing or tampered files/folders
 - Recovery logic may recreate critical files (index, credentials) to prevent crashes
 
-- Defualt **User** Login
--   **Username**: gautam
--   **Password**: 123
-- Default **Admin** Login
--   **Username**: admin
--   **Password**: admin123
+- Defualt **User** Login<br>
+&ensp;->**Username**: gautam<br>
+&ensp;->**Password**: 123<br>
+- Default **Admin** Login<br>
+&ensp;->**Username**: admin<br>
+&ensp;->**Password**: admin123
 
 ---
 

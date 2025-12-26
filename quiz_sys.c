@@ -45,7 +45,7 @@ int admin_check();
 void admin_mode();
 void delete_quizz(int activate, char *filepath);
 int make_quiz();
-int mcq_make();
+int mcq_make(char subject[], char filename[]);
 
 void clearInputBuffer(){
     int b;

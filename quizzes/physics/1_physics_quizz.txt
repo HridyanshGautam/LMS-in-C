@@ -1,8 +1,0 @@
-hello_there
-0 0
-Total_questions:1
-Question_1:
-A:a
-B:a
-C:a
-D:a

@@ -219,11 +219,12 @@ void safe_fgets(char *buf, int size){
 
 }
 void safe_file_fgets(char *buf, int size, FILE *file){
-    fgets(buf, sizeof(size), file);
+    fgets(buf, size, file);
     buf[strcspn(buf, "\n")] = '\0';
 }
 void gated_string_input(char string [], int length,int need_cords, int row, int column, int is_concealed, int force_lowercase, int allow_space, int next_line){
-    char tmp, i = 0;
+    char tmp;
+    int i = 0;
     length++;
     if(need_cords == 1){
         gotoXY(row, column);
@@ -1049,13 +1050,13 @@ int stu_subject_panel(char mode){
     } 
 }
 void extract_questions(MCQ questions[], FILE *quizz_file, FILE *answer_file, char title[], int *correct_marks, int *incorrect_marks, int *total_questions){
-    int total_questions, i=0, bob;
+    int i=0, bob;
     char title_underscore[600], buffer[600];
     safe_file_fgets(title_underscore, sizeof(title_underscore), quizz_file);
     safe_file_fgets(buffer, sizeof(buffer), quizz_file);
     sscanf(buffer, "%d %d", correct_marks, incorrect_marks);
     safe_file_fgets(buffer, sizeof(buffer), quizz_file);
-    sscanf(buffer, "Total_questions:%d", &total_questions);
+    sscanf(buffer, "Total_questions:%d", total_questions);
     while(i < total_questions){
         safe_file_fgets(buffer, sizeof(buffer), quizz_file);
         strcpy(questions[i].question, strchr(buffer, ':') + 1);
@@ -1319,7 +1320,7 @@ int database(char identity, struct quiz_details *qd){
             reset();
             system("cls");
             ndx.global_tmp=quizz_selection;
-            quizz_take(qz_file, ANSWER_file, RESPONSE_file, quizz_selection);
+            quizz_take(qz_file, ANSWER_file, RESPONSE_file, &quizz_selection);
         break;
         
         

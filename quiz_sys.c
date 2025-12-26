@@ -8,7 +8,15 @@
 #include <conio.h>
 #include <stdlib.h>
 
+#define MAX_Q_LEN 256
+#define MAX_OPT_LEN 128
+
 float version = 1.00;
+typedef struct{
+    char question[MAX_Q_LEN];
+    char options[4][MAX_OPT_LEN];
+    char correct;
+} MCQ;
 struct quiz_index {
     int physics,maths,c_prog,linux,prob,global_tmp;
 } ndx;
@@ -45,7 +53,9 @@ int admin_check();
 void admin_mode();
 void delete_quizz(int activate, char *filepath);
 int make_quiz();
-int mcq_make(char subject[], char filename[]);
+void mcq_make_init(char subject[]);
+int mcq_make(char subject[], char qz_filename[], char ans_filename[], char title[]);
+void mcq_qz_file_print(MCQ questions[], char title[], int size, FILE *quizz_file, FILE *ans_file);
 
 void clearInputBuffer(){
     int b;
@@ -54,6 +64,7 @@ void clearInputBuffer(){
 char safe_option_extract();
 int safe_num_extract(int);
 void replace_space(char input [], char output []);
+void sanatise_filename(char file[]);
 void replace_underscore(char input [], char output []);
 int folder_exists(char *path);
 void safe_fgets(char *buf, int size);
@@ -74,6 +85,7 @@ int numeric_check(const char *in);
 void clearLine(int row){
     printf("\033[%d:1H\033[2K", row);
 }
+
 
 //WINDOWS API FUNCTIONS & UI
 void print_menu_row(char *line, int row, int column, int is_highlight, char *color);
@@ -658,6 +670,15 @@ void replace_space(char input [], char output []){
         if(output[i] == ' '){
             output[i] = '_';
             continue;
+        }
+    }
+}
+void sanatise_filename(char file[]){
+    for(int i = 0; file[i] != '\0'; i++){
+        if(file[i] == ' '){
+            file[i] = '_';
+        }else if(strchr("/\\:*?\"<>|", file[i])){
+            file[i] = '_';
         }
     }
 }
@@ -1300,7 +1321,7 @@ int database(char identity, struct quiz_details *qd){
             printf("0)Back");
             reset();
             while(i <= indexx){
-                sprintf(quizz_filename,"quizzes/%s/%s_quizz_%d.txt", qd->subject, qd->subject, i);
+                sprintf(quizz_filename,"quizzes/%s/%d_%s_quizz.txt", qd->subject, i, qd->subject);
                 FILE *quizz = fopen(quizz_filename,"r");
                 if(quizz == NULL){
                     red();
@@ -1701,63 +1722,83 @@ while(1){
 int make_quiz(){
     fetch_index();
     int qz_sub,qz_type;
-    char subject[20],type[20],file_name[100];
+    char subject[20],type[20];
     printf("\nPlease select subject:\n0)Back\n1)Physics\n2)Maths\n3)C programming\n4)Linux\n5)Problem solving\n->");
     qz_sub = safe_num_extract(5);
 
     switch (qz_sub){
         case 1:
-            strcpy(quizz_details.subject,"physics");
+            strcpy(subject,"physics");
             ndx.global_tmp = ndx.physics;
-            sprintf(file_name,"quizzes/physics/physics_quizz_%d.txt",ndx.physics+1);
         break;
         case 2:
-            strcpy(quizz_details.subject,"maths");
+            strcpy(subject,"maths");
             ndx.global_tmp = ndx.maths;
-            sprintf(file_name,"quizzes/maths/maths_quizz_%d.txt",ndx.maths+1);
         break;
         case 3:
-            strcpy(quizz_details.subject,"c_prog");
+            strcpy(subject,"c_prog");
             ndx.global_tmp = ndx.c_prog;
-            sprintf(file_name,"quizzes/c_prog/c_prog_quizz_%d.txt",ndx.c_prog+1);
         break;
         case 4:
-            strcpy(quizz_details.subject,"linux");
+            strcpy(subject,"linux");
             ndx.global_tmp = ndx.linux;
-            sprintf(file_name,"quizzes/linux/linux_quizz_%d.txt",ndx.linux+1);
         break;
         case 5:
-            strcpy(quizz_details.subject,"prob_solving");
+            strcpy(subject,"prob_solving");
             ndx.global_tmp = ndx.prob;
-            sprintf(file_name,"quizzes/prob_solving/prob_solving_quizz_%d.txt",ndx.prob+1);
         break;
         case 0:
             system("cls");
             return 1;
-    }
-    strcpy(quizz_details.quizz_filename,file_name);   
+    }  
+    
     printf("\nPlease select quiz type:\n1)MCQ\n2)Fill in the blanks\n->");
-    qz_type = safe_num_extract(2);
-    // switch (qz_type){ (OLD Secondary aproach to flag quizz type) 
-    //     case 1:
-    //         strcpy(type,"MCQ");
-    //     break;                           
-    //     case 2:
-    //         //strcpy(type,"Fill in the blanks");
-    //         WIP();
-    //     break;
-    // }
+    qz_type = safe_num_extract(2);//this funtion is so good :)
     
     if(qz_type == 1){
-        printf("Loading");
+        printf("Loading");//dramatic effect
         pretty_little_loading_bar();
         system("cls");
-        mcq_make();
+        mcq_make_init(subject);
         return 1;
     }else if(qz_type == 2){
-        //FITB();
+        //FITB(); i could make this or forget about it
         WIP();
     }
+}
+void mcq_make_init(char subject[]){
+    append_index(subject);
+    char title_buf[600]; //tmp has to be large as in underscore conversion length may exceed max input length 256
+    size_t title_sz;
+    //Title input
+    printf("Please enter title of quizz: ");
+    safe_fgets(title_buf, sizeof(title_buf));
+    sanatise_filename(title_buf);
+    //Finally using dynamic memory now
+    title_sz = snprintf(NULL, 0, "quizzes/%s/%d_%s_quizz.txt", subject, ndx.global_tmp+1, subject) + 1;
+    char *qz_filename = malloc(title_sz);
+    char *ans_filename = malloc(title_sz+20);
+    char *response_folder_name = malloc(30+title_sz);
+    if (!qz_filename || !ans_filename || !response_folder_name) {
+    red();
+    fprintf(stderr, "\nMemory allocation failed\n");
+    free(qz_filename);
+    free(ans_filename);
+    free(response_folder_name);
+    reset();
+    press_enter();
+    return;
+}
+    //quizz filename and answer filename No more overflow *hopefully
+    snprintf(qz_filename, title_sz, "quizzes/%s/%d_%s_quizz.txt", subject, ndx.global_tmp+1, subject);
+    snprintf(ans_filename, title_sz+20, "quizzes/%s/answers/%d_%s_quizz.txt", subject, ndx.global_tmp+1, subject);
+    //Response folder make
+    snprintf(response_folder_name, title_sz+30, "responses/%s/B7/%d_%s_quizz", subject, ndx.global_tmp+1, subject);
+    CreateDirectory(response_folder_name, NULL);
+    mcq_make(subject, qz_filename, ans_filename, title_buf);
+    free(qz_filename);
+    free(ans_filename);
+    free(response_folder_name);
 }
 void delete_quizz(int activate, char *filepath){
     char file_name[100], tmp_title[100], subject[20], qz_tittle[100], response_folder[100], response_folder_path_buffer[100], command[100];
@@ -1844,77 +1885,64 @@ void delete_quizz(int activate, char *filepath){
     printf("\033[4;1HQuizz deleted succesfully\n");
     press_enter();
 }
-int mcq_make(){
+int mcq_make(char subject[], char qz_filename[],char ans_filename[], char title[]){
+    MCQ question[100];
+    int marks_correct, marks_incorrect,i=0;
     
-    int marks_correct, marks_incorrect,i=1;
-    char answer_file_path[200],answer_file_path_BUFFER[200], response_folder_allocation[200], response_folder_allocation_BUFFER[200],tmp_question[100],tmp_optA[50],tmp_optB[50],tmp_optC[50],tmp_optD[50],correct_option;
-    //QUIZ FILE MAKING
-    FILE *MCQ = fopen(quizz_details.quizz_filename,"w");
+    //QUIZ AND ANSWER FILE MAKING
+    FILE *MCQ = fopen(qz_filename ,"w");
     if(MCQ == NULL){
         printf("ERROR! Quizz file not initialised\n");
         press_enter();
         return 1;
     }
-    //while (getchar() != '\n');
-    printf("Please enter title of quizz: ");
-    fgets(quizz_details.quizz_name,sizeof(quizz_details.quizz_name),stdin);
-    quizz_details.quizz_name[strcspn(quizz_details.quizz_name,"\n")] = '\0';
-    //RESPONSE FOLDER GENERATION
-    strcpy(response_folder_allocation_BUFFER,quizz_details.quizz_name);
-    for (int i = 0; response_folder_allocation_BUFFER[i] != '\0'; i++){
-        if(response_folder_allocation_BUFFER[i] == ' '){
-            response_folder_allocation_BUFFER[i] = '_';
-        }
-    }
-    sprintf(response_folder_allocation,"responses/%s/B7/%s",quizz_details.subject,response_folder_allocation_BUFFER);
-    CreateDirectory(response_folder_allocation, NULL);
-    //ANSWER FILE LOADING
-    strcpy(answer_file_path_BUFFER, response_folder_allocation_BUFFER);
-    sprintf(answer_file_path,"quizzes/%s/answers/%s_%d.txt",quizz_details.subject,answer_file_path_BUFFER,ndx.global_tmp+1);
-    FILE *answers = fopen(answer_file_path,"w");
+    FILE *answers = fopen(ans_filename,"w");
     printf("Please enter marking scheme:\nCorrect: ");
     scanf("%d", &marks_correct);
     printf("Incorrect: ");
     scanf("%d", &marks_incorrect);
-    fprintf(MCQ, "%s\n%d %d\n", quizz_details.quizz_name, marks_correct, marks_incorrect);
+    fprintf(MCQ, "%s\n%d %d\n", title, marks_correct, marks_incorrect);
     getchar();
     
     while(1){
-    
-        printf("\nEnter question %d or type EXIT to stop: ", i);
-        fgets(tmp_question, sizeof(tmp_question), stdin);
-        tmp_question[strcspn(tmp_question, "\n")] = '\0';
-
-        if(strcmp(tmp_question,"EXIT")==0){
+        printf("\nEnter question %d or type EXIT to stop: ", i+1);
+        safe_fgets(question[i].question, MAX_Q_LEN);
+        if(strcmp(question[i].question,"EXIT")==0){
             break;
         }
         printf("Option A: ");
-        fgets(tmp_optA, sizeof(tmp_optA), stdin);
-        tmp_optA[strcspn(tmp_optA, "\n")] = '\0';
+        safe_fgets(question[i].options[0], MAX_OPT_LEN);
         printf("Option B: ");
-        fgets(tmp_optB, sizeof(tmp_optB), stdin);
-        tmp_optB[strcspn(tmp_optB, "\n")] = '\0';
+        safe_fgets(question[i].options[1], MAX_OPT_LEN);
         printf("Option C: ");
-        fgets(tmp_optC, sizeof(tmp_optC), stdin);
-        tmp_optC[strcspn(tmp_optC, "\n")] = '\0';
+        safe_fgets(question[i].options[2], MAX_OPT_LEN);
         printf("Option D: ");
-        fgets(tmp_optD, sizeof(tmp_optD), stdin);
-        tmp_optD[strcspn(tmp_optD, "\n")] = '\0';
+        safe_fgets(question[i].options[3], MAX_OPT_LEN);
         printf("Correct option(lower case): ");
-        correct_option = safe_option_extract();
+        question[i].correct = safe_option_extract();
         //while(getchar() != '\n'); //god i hate these input buffers
-        fprintf(MCQ, "Question %d:%s\nA:%s\nB:%s\nC:%s\nD:%s\n", i,tmp_question,tmp_optA,tmp_optB,tmp_optC,tmp_optD);
-        fprintf(answers,"Question_%d:%c\n",i,correct_option);
+        // fprintf(MCQ, "Question %d:%s\nA:%s\nB:%s\nC:%s\nD:%s\n", i,tmp_question,tmp_optA,tmp_optB,tmp_optC,tmp_optD); Old method leveling up now
+        // fprintf(answers,"Question_%d:%c\n",i,correct_option);
         i++;
         Sleep(100);
     }
-    printf("%s quiz has been saved succesfully\n",quizz_details.subject);
+    mcq_qz_file_print(question, title, i, MCQ, answers);
+    printf("%s quiz has been saved succesfully\n", subject);
     fclose(MCQ);
     fclose(answers);
-    append_index(quizz_details.subject);
-    FILE *mcq = fopen(quizz_details.quizz_filename,"a");
-    fprintf(mcq,"TOTAL_QUESTIONS %d",i-1);
-    fclose(mcq);
-    //get_number_of_questions(); legacy line
+    // FILE *mcq = fopen(qz_filename,"a");
+    // fprintf(mcq,"TOTAL_QUESTIONS %d",i-1);
+    // fclose(mcq);
+    //get_number_of_questions(); legacy lines
     pretty_little_loading_bar();
+}
+void mcq_qz_file_print(MCQ questions[], char title[], int size, FILE *quizz_file, FILE *ans_file){
+    int i = 0, index = 1;
+    fprintf(quizz_file, "Total_questions:%d\n", size);
+    while(i < size){
+        fprintf(quizz_file, "Question_%d:%s\nA:%s\nB:%s\nC:%s\nD:%s\n", index, questions[i].question, questions[i].options[0],
+             questions[i].options[1], questions[i].options[2], questions[i].options[3]);
+        fprintf(ans_file, "Question_%d:%c\n", index, questions[i].correct);
+        i++; index++;
+    }
 }

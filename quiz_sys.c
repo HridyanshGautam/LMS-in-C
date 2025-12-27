@@ -1,4 +1,5 @@
 //MAJOR REFACTOR IN PROGRES! EVERYTHING EXCEPT MCQ MAKE IS INOPERABLE AND WILL GIVE FILE INITIALISATION ERRORS
+//UPDATE: REFACTOR IN PROGREESS! 60% COMPLETE! CURRENTLY MCQ MAKE AND QUIZZ TAKING WORKS BUT PERFORMANCE/ANALYTICS WILL GIVE EXPECTED FILE INITIALISATION ERRORS gonna slowly start to remove the massvie global dependency
 // This project exists to learn C deeply
 // It is intentionally overbuilt, non-portable, and has some "human" touches also if i had more time i would have added MD5 hashing for passwords and answer files
 // dont use scanf for input handling, modularity is key, C is unforgiving, NEVER USE GLOBALS new me thought i am a genius now debugging nightmare
@@ -12,12 +13,16 @@
 #define MAX_Q_LEN 256
 #define MAX_OPT_LEN 128
 
-float version = 1.00;
+float version = 2.00;
 typedef struct{
     char question[MAX_Q_LEN];
     char options[4][MAX_OPT_LEN];
+    char user_choice;
     char correct;
 } MCQ;
+typedef struct{
+    char title[600];
+} Titles;
 struct quiz_index {
     int physics,maths,c_prog,linux,prob,global_tmp;
 } ndx;
@@ -43,9 +48,9 @@ int student_validity();
 void user_setup(char *sap, char *name_with_underscores);
 int student_dashboard();
 int stu_subject_panel(char mode);
-int quizz_take(FILE *quizz_file, FILE *ans_file, FILE *response_file, int *quizz_selection);
+int quizz_take(FILE *quizz_file, FILE *ans_file, FILE *response_file, FILE *analytics_file, int *quizz_selection);
 void extract_questions(MCQ questions[], FILE *quizz_file, FILE *answer_file, char title[], int *correct_marks, int *incorrect_marks, int *total_questions);
-int evaluator(MCQ questions[], int *correct_marks, int *incorrect_marks, int *total_questions, int *quizz_selection);
+int evaluator(MCQ questions[], FILE *response_file, FILE *analytics_file, int *correct_marks, int *incorrect_marks, int *total_questions, int *quizz_selection, int *total_marks);
  
 int user_database();
 int database(char identity, struct quiz_details *qd);
@@ -75,6 +80,7 @@ void gated_string_input(char string[],int length, int need_cords, int x, int y, 
 int verify_integrity();
 void fetch_index();
 void append_index(char []);
+int max_index();
 void pretty_little_loading_bar();
 void fast_little_loading_bar(int length,char symbol);
 void scary_little_loading_bar(int,int,char);
@@ -164,7 +170,7 @@ int main(){
         reset(); 
         show_cursor();
         
-        
+
         //menu_select = safe_num_extract(2);
         system("cls");
         if (menu_select == 1){
@@ -729,6 +735,15 @@ void append_index(char subject[]){
     fclose(num_trk);
     fetch_index();
 }
+int max_index(){
+    fetch_index();
+    int max = ndx.physics;
+    if(ndx.maths > max) max = ndx.maths;
+    if(ndx.linux > max) max = ndx.linux;
+    if(ndx.c_prog > max) max = ndx.c_prog;
+    if(ndx.prob > max) max = ndx.prob;
+    return max;
+}
 void get_number_of_questions(){
     char line[200];
     FILE *MCQ = fopen(quizz_details.quizz_filename,"r");
@@ -1057,7 +1072,7 @@ void extract_questions(MCQ questions[], FILE *quizz_file, FILE *answer_file, cha
     sscanf(buffer, "%d %d", correct_marks, incorrect_marks);
     safe_file_fgets(buffer, sizeof(buffer), quizz_file);
     sscanf(buffer, "Total_questions:%d", total_questions);
-    while(i < total_questions){
+    while(i < *total_questions){
         safe_file_fgets(buffer, sizeof(buffer), quizz_file);
         strcpy(questions[i].question, strchr(buffer, ':') + 1);
 
@@ -1075,9 +1090,9 @@ void extract_questions(MCQ questions[], FILE *quizz_file, FILE *answer_file, cha
     }
 
 }
-int quizz_take(FILE *quizz_file, FILE *ans_file, FILE *responses, int *quizz_selection){
+int quizz_take(FILE *quizz_file, FILE *ans_file, FILE *responses, FILE *analytics_file, int *quizz_selection){
     MCQ questions[100];
-    int i=1, index=0, sanity = 1, correct_marks, incorrect_marks, total_questions;
+    int i=1, index=0, sanity = 1, correct_marks, incorrect_marks, total_questions, total_score = 0;
     char tmp_marks_string[10], title[600];
     //strcpy(student_details.SAP_id,"590021474"); BATCH LOGIC DEBUG LINE
     if(quizz_file == NULL){
@@ -1102,13 +1117,11 @@ int quizz_take(FILE *quizz_file, FILE *ans_file, FILE *responses, int *quizz_sel
         sanity = 0;
     }
     if(sanity == 0){
-        exit(0);
+        return 0;
     }
-    
+    //Loading questions and answers to ram
     extract_questions(questions, quizz_file, ans_file, title, &correct_marks, &incorrect_marks, &total_questions);
-    fclose(quizz_file);
-    fclose(ans_file);
-
+    
     // fgets(tmp_marks_string,sizeof(tmp_marks_string), quizz_file);
     // tmp_marks_string[strcspn(tmp_marks_string,"\n")] = '\0';
     // sscanf(tmp_marks_string,"%d %d", &stu_quizz.positive_marks, &stu_quizz.negative_marks);
@@ -1116,25 +1129,31 @@ int quizz_take(FILE *quizz_file, FILE *ans_file, FILE *responses, int *quizz_sel
     while(i <= total_questions){
         
         printf("%s\n%s\n%s\n%s\n%s\n->", questions[index].question, questions[index].options[0], questions[index].options[1], questions[index].options[2], questions[index].options[3]);
-        stu_quizz.picked_option = safe_option_extract();
+        questions[index].user_choice = safe_option_extract();
         printf("\n");
-        fprintf(responses,"Question_%d:%c\n",i,stu_quizz.picked_option);
         i++; index++;
     }
     printf("Thank you quizz has been submitted for evaluation!\n");
     green();
     press_enter();
     reset();
+    evaluator(questions, responses, analytics_file, &correct_marks, &incorrect_marks, &total_questions, quizz_selection, &total_score);
     system("cls");
-    fclose(responses);
-    evaluator(questions, &correct_marks, &incorrect_marks, &total_questions, quizz_selection);
     return 1;
 }
-int evaluator(MCQ questions[], int *correct_marks, int *incorrect_marks, int *total_questions, int *quizz_selection){
-    int i=1,total_score = 0;
+int evaluator(MCQ questions[], FILE *response_file, FILE *analytics_file, int *correct_marks, int *incorrect_marks, int *total_questions, int *quizz_selection, int *total_score){
+    int i=0, max_marks = (*correct_marks)*(*total_questions);
     
-    
-    
+    while(i < *total_questions){
+        if(questions[i].user_choice == questions[i].correct){
+            *total_score = *total_score + *correct_marks;
+        }else{
+            *total_score = *total_score - *incorrect_marks;
+        }
+        fprintf(response_file, "Question_%d:%c\n", (i+1), questions[i].user_choice);
+        i++;
+    }
+    fprintf(analytics_file, "%d/%d\n", *total_score, max_marks);
 }
 
 //DATABASE
@@ -1267,15 +1286,17 @@ int user_database(){
     }
 }
 int database(char identity, struct quiz_details *qd){
-    int i=1,quizz_selection,indexx=ndx.global_tmp;
+    int maxx = max_index();
+    Titles titles[maxx];
+    int i=1, titles_index = 0, quizz_selection, indexx=ndx.global_tmp;
     char tmp_name[100],quizz_filename[100], answer_filename[100], response_filename[100], Garbage[100];
-
+    size_t response_filepath_sz, analytics_filepath_sz;
     char buffer[1000];
     //printf("0)Back");
     switch (identity){
         case 'q':
             //Printing list of quizzes
-            i = 1;
+            i = 1; titles_index = 0;
             system("cls");
             yellow();
             printf("0)Back");
@@ -1290,11 +1311,11 @@ int database(char identity, struct quiz_details *qd){
                     reset();
                     i++;
                 }else{
-                fgets(tmp_name, sizeof(tmp_name),quizz);
-                tmp_name[strcspn(tmp_name,"\n")] = '\0';
+                safe_file_fgets(tmp_name, sizeof(tmp_name), quizz);
+                strcpy(titles[titles_index].title, tmp_name);
                 printf("\n%d)%s",i,tmp_name);
                 fclose(quizz);
-                i++;
+                i++; titles_index++;
                 }
             }
             
@@ -1309,10 +1330,28 @@ int database(char identity, struct quiz_details *qd){
             }
             snprintf(quizz_filename, 100, "quizzes/%s/%d_%s_quizz.txt", qd->subject , quizz_selection, qd->subject);
             snprintf(answer_filename, 100, "quizzes/%s/answers/%d_%s_quizz.txt", qd->subject, quizz_selection, qd->subject);
-            snprintf(response_filename, 100, "responses/%s/B7/%d_%s_quizz/%s.txt", qd->subject, quizz_selection, qd->subject, student_details.SAP_id);
+            
+            response_filepath_sz = snprintf(NULL, 0, "responses/%s/B7/%s/%s.txt", qd->subject, titles[quizz_selection-1].title, student_details.SAP_id) + 1;
+            analytics_filepath_sz = snprintf(NULL, 0, "analytics/%s/B7/%s/%s.txt", qd->subject, titles[quizz_selection-1].title, student_details.SAP_id) + 1;
+            char *response_filepath = malloc(response_filepath_sz);
+            char *analytics_filepath = malloc(analytics_filepath_sz);
+            if(!response_filepath || !analytics_filepath){
+                red();
+                printf("\nMemory Allocation Failed\n");
+                free(response_filepath);
+                free(analytics_filepath);
+                press_enter();
+                reset();
+                return 0;
+            }
+            
+            snprintf(response_filepath, response_filepath_sz, "responses/%s/B7/%s/%s.txt", qd->subject, titles[quizz_selection-1].title, student_details.SAP_id);
+            snprintf(analytics_filepath, analytics_filepath_sz, "analytics/%s/B7/%s/%s.txt", qd->subject, titles[quizz_selection-1].title, student_details.SAP_id);
+            
             FILE *qz_file = fopen(quizz_filename, "r");
             FILE *ANSWER_file = fopen(answer_filename, "r");
-            FILE *RESPONSE_file = fopen(response_filename, "w");
+            FILE *RESPONSE_file = fopen(response_filepath, "w");
+            FILE *ANALYTICS_file = fopen(analytics_filepath, "w");
             //strcpy(qd->quizz_filename, quizz_filename);
             yellow();
             printf("\nInitialising");
@@ -1320,7 +1359,13 @@ int database(char identity, struct quiz_details *qd){
             reset();
             system("cls");
             ndx.global_tmp=quizz_selection;
-            quizz_take(qz_file, ANSWER_file, RESPONSE_file, &quizz_selection);
+            quizz_take(qz_file, ANSWER_file, RESPONSE_file, ANALYTICS_file, &quizz_selection);
+            fclose(qz_file);
+            fclose(ANSWER_file);
+            fclose(RESPONSE_file);
+            fclose(ANALYTICS_file);
+            free(response_filepath);
+            free(analytics_filepath);
         break;
         
         
@@ -1680,7 +1725,7 @@ while(1){
         printf("\nLogging out");
         pretty_little_loading_bar();
         reset();
-        main();
+        return;
     }
 }
 }
@@ -1734,38 +1779,55 @@ int make_quiz(){
 void mcq_make_init(char subject[]){
     append_index(subject);
     char title_buf[600]; //tmp has to be large as in underscore conversion length may exceed max input length 256
-    size_t title_sz;
+    size_t title_sz, response_folder_sz, analytics_folder_sz, answer_file_sz, quizz_file_sz;
     //Title input
     printf("Please enter title of quizz: ");
     safe_fgets(title_buf, sizeof(title_buf));
     sanatise_filename(title_buf);
     //Finally using dynamic memory now
-    title_sz = snprintf(NULL, 0, "quizzes/%s/%d_%s_quizz.txt", subject, ndx.global_tmp+1, subject) + 1;
-    char *qz_filename = malloc(title_sz);
-    char *ans_filename = malloc(title_sz+20);
-    char *response_folder_name = malloc(30+title_sz);
-    if (!qz_filename || !ans_filename || !response_folder_name) {
+    title_sz = snprintf(NULL, 0, "%s", title_buf) + 1;
+    quizz_file_sz = snprintf(NULL, 0, "quizzes/%s/%d_%s_quizz.txt", subject, ndx.global_tmp+1, subject) + 1;
+    answer_file_sz = snprintf(NULL, 0, "quizzes/%s/answers/%d_%s_quizz.txt", subject, ndx.global_tmp+1, subject) + 1;
+    response_folder_sz = snprintf(NULL, 0, "responses/%s/B7/%s", subject, title_buf) + 1;
+    analytics_folder_sz = snprintf(NULL, 0, "analytics/%s/B7/%s", subject, title_buf) + 1;
+    //Dynamic array creation
+    char *qz_filename = malloc(quizz_file_sz);
+    char *ans_filename = malloc(answer_file_sz);
+    char *response_folder_name = malloc(response_folder_sz);
+    char *analytics_folder_name = malloc(analytics_folder_sz);
+    if (!qz_filename || !ans_filename || !response_folder_name || !analytics_folder_name) {
     red();
     fprintf(stderr, "\nMemory allocation failed\n");
     free(qz_filename);
     free(ans_filename);
     free(response_folder_name);
+    free(analytics_folder_name);
     reset();
     press_enter();
     return;
 }
     //quizz filename and answer filename No more overflow *hopefully
-    snprintf(qz_filename, title_sz, "quizzes/%s/%d_%s_quizz.txt", subject, ndx.global_tmp+1, subject);
-    snprintf(ans_filename, title_sz+20, "quizzes/%s/answers/%d_%s_quizz.txt", subject, ndx.global_tmp+1, subject);
+    snprintf(qz_filename, quizz_file_sz, "quizzes/%s/%d_%s_quizz.txt", subject, ndx.global_tmp+1, subject);
+    snprintf(ans_filename, answer_file_sz, "quizzes/%s/answers/%d_%s_quizz.txt", subject, ndx.global_tmp+1, subject);
     //Response folder make
-    snprintf(response_folder_name, title_sz+30, "responses/%s/B7/%d_%s_quizz", subject, ndx.global_tmp+1, subject);
+    snprintf(response_folder_name, response_folder_sz, "responses/%s/B7/%s", subject, title_buf);
     CreateDirectory(response_folder_name, NULL);
+    //Analytyics folder make
+    snprintf(analytics_folder_name, analytics_folder_sz, "analytics/%s/B7/%s", subject, title_buf);
+    CreateDirectory(analytics_folder_name, NULL);
+    
     mcq_make(subject, qz_filename, ans_filename, title_buf);
+    //Freeing used dynamic memory
     free(qz_filename);
     free(ans_filename);
     free(response_folder_name);
+    free(analytics_folder_name);
 }
 void delete_quizz(int activate, char *filepath){
+    //CURRENTLY NOT SAFE TO USE
+    WIP();
+    return;
+
     char file_name[100], tmp_title[100], subject[20], qz_tittle[100], response_folder[100], response_folder_path_buffer[100], command[100];
     int choice, row_trk = 2, sanity = 0, i = 8, sub_index = 0, ans_ndx = activate;
     if(activate == 0){
